@@ -1,4 +1,4 @@
-# Управление роботами: KUKA iiwa & Unitree Go2
+# Robot Simulation: KUKA iiwa & Unitree Go2
 
 Учебный проект по дисциплине **«Прикладные интеллектуальные системы»**  
 Брестский государственный технический университет, кафедра ИИТ  
@@ -6,25 +6,20 @@
 
 ---
 
-## О проекте
+## Демонстрация
 
-Проект охватывает два направления:
-
-- **Симуляция манипулятора KUKA iiwa** в физическом движке PyBullet
-- **ROS-пакет для четвероногого робота Unitree Go2** — URDF-описание, симуляция в Gazebo и RViz
-
-Управление реализуется через Ethernet-подключение с использованием **Unitree SDK2** и протокола **DDS (Data Distribution Service)**.
+[![Демо симуляции](https://img.youtube.com/vi/Manjhp_4Ujk/0.jpg)](https://youtu.be/Manjhp_4Ujk)
 
 ---
 
-## Структура лабораторных работ
+## О проекте
 
-| № | Тема | Содержание |
-|---|------|-----------|
-| Лаб. 1 | План проекта | Постановка целей, разбивка на этапы |
-| Лаб. 2 | Анализ аппаратной части | Характеристики Go2, DOF, FSM-состояния |
-| Лаб. 3 | Настройка системы управления | WSL2, SDK2, CycloneDDS, сеть |
-| Лаб. 4 | Реализация режимов работы | API управления: движение, жесты, FSM |
+Два независимых физических симулятора на базе **PyBullet**:
+
+- **`manipulator_sim.py`** — симуляция 7-осевого манипулятора KUKA iiwa с управлением через GUI-слайдеры
+- **`go2_simulation/simulation_app.py`** — симуляция четвероногого робота Unitree Go2 с управлением через PyQt6-интерфейс
+
+Оба робота работают в одном физическом движке PyBullet, загружают URDF-модели и симулируются в реальном времени с гравитацией.
 
 ---
 
@@ -32,44 +27,54 @@
 
 ```
 project/
-├── manipulator_sim.py              # Симуляция манипулятора KUKA iiwa (PyBullet)
+├── manipulator_sim.py              # Симуляция манипулятора KUKA iiwa
 └── go2_simulation/
-    ├── simulation_app.py           # Альтернативный запуск симуляции KUKA
-    └── go2_description/            # ROS-пакет: URDF-описание робота Go2
-        ├── config/
-        │   ├── robot_control.yaml  # PID-параметры контроллеров суставов
-        │   └── joint_names_go2_description.yaml
-        ├── launch/
-        │   ├── gazebo.launch       # Запуск в Gazebo
-        │   └── go2_rviz.launch     # Визуализация в RViz
+    ├── simulation_app.py           # Симуляция робота Unitree Go2
+    └── go2_description/            # URDF-модель Go2 (взята с GitHub)
         ├── urdf/
-        │   └── go2_description.urdf
-        ├── xacro/                  # Xacro-шаблоны модели
-        └── meshes/                 # 3D-меши (.dae): база, бедро, голень, стопа
+        │   └── go2_description.urdf   # Загружается в симуляцию
+        ├── meshes/                     # 3D-меши (.dae): база, бедро, голень, стопа
+        └── xacro/                      # Xacro-шаблоны модели
 ```
+
+> URDF-модель робота Go2 взята из официального репозитория:  
+> **[https://github.com/unitreerobotics/unitree_ros](https://github.com/unitreerobotics/unitree_ros)**  
+> Файл `go2_description.urdf` подгружается в PyBullet напрямую из папки `go2_simulation/go2_description/urdf/`.
 
 ---
 
-## Компоненты
-
-### 1. Симуляция манипулятора KUKA iiwa (PyBullet)
-
-Интерактивная симуляция 7-степенного манипулятора с управлением через GUI-слайдеры.
-
-**Возможности:**
-- Физическая симуляция с гравитацией (9.81 м/с²)
-- GUI-слайдеры для управления каждым суставом в реальном времени
-- Позиционное управление моторами (500 Н)
-- Частота симуляции: **240 Гц**
-- Автоматическое определение лимитов суставов из URDF
-
-#### Требования
+## Требования
 
 ```bash
-pip install pybullet
+pip install pybullet PyQt6
 ```
 
-#### Запуск
+| Зависимость | Назначение |
+|-------------|-----------|
+| `pybullet` | Физический движок, рендер, загрузка URDF |
+| `PyQt6` | GUI-интерфейс управления Go2 |
+
+---
+
+## Симуляция 1 — Манипулятор KUKA iiwa
+
+**Файл:** `manipulator_sim.py`
+
+Интерактивная симуляция 7-степенного манипулятора KUKA iiwa. URDF-модель встроена в `pybullet_data` и загружается автоматически.
+
+**Параметры симуляции:**
+
+| Параметр | Значение |
+|----------|----------|
+| Гравитация | -9.81 м/с² |
+| Частота симуляции | 240 Гц |
+| Усилие на сустав | 500 Н |
+| Режим управления | `POSITION_CONTROL` |
+| Число суставов | 7 |
+
+**Управление:** слайдеры в правой части окна PyBullet — по одному на каждый сустав. Лимиты считываются автоматически из URDF.
+
+### Запуск
 
 ```bash
 python manipulator_sim.py
@@ -77,11 +82,24 @@ python manipulator_sim.py
 
 ---
 
-### 2. ROS-пакет `go2_description` (Unitree Go2)
+## Симуляция 2 — Четвероногий робот Unitree Go2
 
-URDF/Xacro описание четвероногого робота **Unitree Go2** для использования в Gazebo, RViz и других симуляторах (Isaac Gym и др.).
+**Файл:** `go2_simulation/simulation_app.py`
 
-**Суставы (12 DoF):**
+Симуляция робота Go2 с несколькими режимами движения и поз. URDF-модель загружается из локальной папки `go2_description/urdf/go2_description.urdf`.
+
+**Параметры симуляции:**
+
+| Параметр | Значение |
+|----------|----------|
+| Гравитация | -9.81 м/с² |
+| Частота симуляции | 240 Гц |
+| Усилие на сустав | 70–180 Н (зависит от состояния) |
+| Режим управления | `POSITION_CONTROL` |
+| Трение поверхности | Lateral 1.5, Spinning 1.0 |
+| Управляемых суставов | 12 (hip, thigh, calf × 4 ноги) |
+
+**Управляемые суставы:**
 
 | Нога | Hip | Thigh | Calf |
 |------|-----|-------|------|
@@ -90,126 +108,30 @@ URDF/Xacro описание четвероногого робота **Unitree Go
 | RL (задняя левая) | RL_hip_joint | RL_thigh_joint | RL_calf_joint |
 | RR (задняя правая) | RR_hip_joint | RR_thigh_joint | RR_calf_joint |
 
-**PID-параметры контроллеров:**
+**Состояния робота (FSM):**
 
-| Сустав | P | I | D |
-|--------|---|---|---|
-| Hip | 100.0 | 0.0 | 5.0 |
-| Thigh | 300.0 | 0.0 | 8.0 |
-| Calf | 300.0 | 0.0 | 8.0 |
+| Состояние | Описание |
+|-----------|----------|
+| `stand` | Стоит, готов к движению |
+| `sit` | Приседает / ложится |
+| `jump` | Прыжок (фазы: push → air → land) |
 
-#### Требования
+**Управление (PyQt6-интерфейс):**
 
-- ROS (Noetic / Melodic)
-- `catkin`, `robot_state_publisher`, `joint_state_publisher_gui`
-- `gazebo_ros`, `unitree_legged_control`
+| Кнопка | Действие |
+|--------|---------|
+| Вперед / Назад | Движение (удерживать) |
+| ПРЫГНУТЬ | Прыжок с анимацией по фазам |
+| ЛЕЧЬ | Переход в позу сидя |
+| ВСТАТЬ | Возврат в стоячую позу |
+| RESET ПОЗИЦИИ | Сброс позиции и ориентации робота |
 
-#### Сборка
-
-```bash
-mkdir -p ~/catkin_ws/src && cd ~/catkin_ws/
-catkin init
-cd src && git clone <repo_url>
-catkin build
-source ~/catkin_ws/devel/setup.bash
-```
-
-#### Запуск
+### Запуск
 
 ```bash
-# Визуализация в RViz
-roslaunch go2_description go2_rviz.launch
-
-# Симуляция в Gazebo
-roslaunch go2_description gazebo.launch
+cd go2_simulation
+python simulation_app.py
 ```
 
 ---
 
-## Архитектура управления (FSM)
-
-Робот использует **конечный автомат (FSM)** для переключения между режимами:
-
-| FSM ID | Состояние | Описание |
-|--------|-----------|----------|
-| 0 | Zero Torque | Отключение момента на моторах |
-| 1 | Damp | Режим демпфирования (безопасное состояние) |
-| 2 | Squat | Положение приседа |
-| 3 | Sit | Положение сидя |
-| 4 | Stand | Положение стоя, готовность к ходьбе |
-| 500 | Start | Начальная инициализация |
-
----
-
-## Настройка окружения
-
-### 1. WSL2 + Ubuntu 22.04
-
-```powershell
-# PowerShell (Администратор)
-dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-wsl --set-default-version 2
-# Затем установить Ubuntu 22.04 LTS из Microsoft Store
-```
-
-### 2. Инструменты разработки в Ubuntu
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip git python3-venv cmake
-```
-
-### 3. Сетевое подключение
-
-Статический IP на Windows:
-
-```
-IP-адрес:  192.168.123.222
-Маска:     255.255.255.0
-```
-
-Проверка связи с роботом:
-
-```bash
-ping 192.168.123.164
-```
-
-### 4. Unitree SDK2
-
-```bash
-mkdir -p ~/go2_project && cd ~/go2_project
-git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
-cd unitree_sdk2_python
-pip install -e .
-```
-
-### 5. CycloneDDS
-
-```bash
-git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
-cd cyclonedds && mkdir build install && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=../install
-cmake --build . --target install
-
-export CYCLONEDDS_HOME="$HOME/cyclonedds/install"
-```
-
----
-
-## Настройка модели столкновений (для Isaac Gym)
-
-В файле `go2_description/urdf/go2_description.urdf` для линков `FL_thigh`, `FR_thigh`, `RL_thigh`, `RR_thigh`:
-
-```xml
-<!-- По умолчанию -->
-<box size="0.213 0.0245 0.034" />
-
-<!-- Укороченная модель для обучения (избегает пересечений thigh/calf) -->
-<box size="0.11 0.0245 0.034" />
-```
-
-| Модель | Превью |
-|--------|--------|
-| Стандартная | `urdf/Normal_collision_model.png` |
-| Изменённая | `urdf/Amended_collision_model.png` |
